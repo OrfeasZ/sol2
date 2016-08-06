@@ -39,13 +39,12 @@ int main() {
  
 	lua.new_usertype<level00>("level00",
 		"var00", &level00::var00,
-		//"var00_prop", sol::property(&level00::GetVar00, &level00::SetVar00),
+		"var00_prop", sol::property(&level00::GetVar00, &level00::SetVar00),
 		"GetVar00", &level00::GetVar00,
 		"SetVar00", &level00::SetVar00
 	);
 
 	lua.new_usertype<level01>("level01",
-		//sol::call_constructor, sol::constructors<sol::types<>>(),
 		sol::base_classes, sol::bases<level00>(),
 		"var01", &level01::var01,
 		"GetVar01", &level01::GetVar01,
@@ -53,9 +52,9 @@ int main() {
 	);
 
 	lua.new_usertype<level02>("level02",
-		sol::base_classes, sol::bases<level00, level01>(),
 		"var02", &level02::var02,
 		"GetVar02", &level02::GetVar02,
+		sol::base_classes, sol::bases<level00, level01>(),
 		"SetVar02", &level02::SetVar02
 	);
 
@@ -96,6 +95,9 @@ int main() {
 		lua.script("print(string.format('%d - expected 8', z.var01))");
 		lua.script("z.var02 = 9");
 		lua.script("print(string.format('%d - expected 9', z.var02))");
+		lua.script("print(string.format('%d - expected 7', z.var00_prop))");
+		lua.script("z.var00_prop = 10");
+		lua.script("print(string.format('%d - expected 10', z:GetVar00()))");
 
 	}
 	catch (std::exception& ex)
