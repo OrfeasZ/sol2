@@ -63,11 +63,6 @@ namespace sol {
 		template<typename... Args>
 		usertype(simple_tag, lua_State* L, Args&&... args) { metatableregister = detail::make_shared<simple_usertype_metatable<T>>(L, std::forward<Args>(args)...); }
 
-		~usertype()
-		{
-			printf("Destroying usertype\n");
-		}
-
 		int push(lua_State* L) {
 			return metatableregister->push_um(L);
 		}

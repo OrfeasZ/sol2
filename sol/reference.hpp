@@ -69,7 +69,7 @@ namespace sol {
 	class reference {
 	private:
 		lua_State* L = nullptr; // non-owning
-        int ref = LUA_NOREF;
+		int ref = LUA_NOREF;
 		std::unordered_map<std::string, usertype_base>* usertypes = nullptr;
 
 		int copy() const noexcept {
@@ -97,7 +97,7 @@ namespace sol {
 		reference(stack_reference&& r) noexcept : reference(r.lua_state(), r.stack_index()) {}
 		reference(lua_State* L, int index = -1) noexcept : L(L) {
 			lua_pushvalue(L, index);
-            ref = luaL_ref(L, LUA_REGISTRYINDEX);
+			ref = luaL_ref(L, LUA_REGISTRYINDEX);
 			usertypes = new std::unordered_map<std::string, usertype_base>();
 		}
 
