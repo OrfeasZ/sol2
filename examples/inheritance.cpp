@@ -38,7 +38,7 @@ int main() {
 	};
  
 	lua.new_usertype<level00>("level00",
-		//"var00", &level00::var00,
+		"var00", &level00::var00,
 		//"var00_prop", sol::property(&level00::GetVar00, &level00::SetVar00),
 		"GetVar00", &level00::GetVar00,
 		"SetVar00", &level00::SetVar00
@@ -62,20 +62,24 @@ int main() {
 		lua.script("x = level00.new()");
 		lua.script("x:SetVar00(1)");
 		lua.script("print(string.format('%d', x:GetVar00()))");
+		lua.script("print(string.format('%d', x.var00))");
 
 		lua.script("y = level01.new()");
 		lua.script("y:SetVar01(2)");
 		lua.script("print(string.format('%d', y:GetVar01()))");
 		lua.script("y:SetVar00(3)");
 		lua.script("print(string.format('%d', y:GetVar00()))");
+		lua.script("print(string.format('%d', y.var00))");
 
 		lua.script("z = level02.new()");
 		lua.script("z:SetVar02(4)");
 		lua.script("print(string.format('%d', z:GetVar02()))");
 		lua.script("z:SetVar00(5)");
 		lua.script("print(string.format('%d', z:GetVar00()))");
+		lua.script("print(string.format('%d', z.var00))");
 		lua.script("z:SetVar01(6)");
 		lua.script("print(string.format('%d', z:GetVar01()))");
+		lua.script("print(string.format('%d', z.var01))");
 	}
 	catch (std::exception& ex)
 	{

@@ -79,6 +79,7 @@ namespace sol {
 			virtual ~registrar() {}
 			virtual void set_reference(reference* r) = 0;
 			virtual void push_functions(std::vector<luaL_Reg>& l, int& index) = 0;
+			virtual bool contains_index() const = 0;
 		};
 
 		template <bool is_index>
@@ -167,11 +168,53 @@ namespace sol {
 			return has_variables::value;
 		}
 
-		bool contains_index() const {
-			// TODO: Take into account inherited classes.
+		template <typename... Bases>
+		void inherited_contain_index(bool& index, base_classes_tag, bases<Bases...>) const {
+			if (sizeof...(Bases) < 1) {
+				return;
+			}
+
+			(void)detail::swallow{ 0,
+				((inherited_contains_index<Bases>(index)), 0)...
+			};
+		}
+
+
+		template <typename N, typename F, typename = std::enable_if_t<!meta::any_same<meta::unqualified_t<N>, base_classes_tag>::value>>
+		void inherited_contain_index(bool&, N&&, F&&) const {
+			// Empty logic.
+			// TODO: Optimize this.
+		}
+
+		template <typename BaseClass>
+		void inherited_contains_index(bool& index) const {
+			auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
+
+			if (it == ref->get_usertypes()->end()) {
+				return;
+			}
+
+			if (it->second.metatableregister->contains_index()) {
+				index = true;
+			}
+		}
+
+		bool contains_index_full() const {
 			bool idx = false;
 			(void)detail::swallow{ 0, ((idx |= usertype_detail::is_indexer(std::get<I * 2>(functions))), 0) ... };
+
+			if (idx) {
+				return idx;
+			}
+
+			// Check inherited classes.
+			(void)detail::swallow{ 0, (inherited_contain_index(idx, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
+
 			return idx;
+		}
+
+		virtual bool contains_index() const override {
+			return mustindex;
 		}
 
 		int finish_regs(regs_t& l, int& index) {
@@ -220,7 +263,19 @@ namespace sol {
 			it->second.metatableregister->push_functions(l, index);
 		}
 
-		template <std::size_t Idx, typename N, typename F>
+		template <std::size_t Idx, typename F>
+		void make_inherit_regs(regs_t&, int&, call_construction, F&&) {
+			// Empty logic.
+			// TODO: Optimize this.
+		}
+
+		template <std::size_t, typename... Bases>
+		void make_inherit_regs(regs_t& l, int& index, base_classes_tag, bases<Bases...>) {
+			// Empty logic.
+			// TODO: Optimize this.
+		}
+
+		template <std::size_t Idx, typename N, typename F, typename = std::enable_if_t<!meta::any_same<meta::unqualified_t<N>, base_classes_tag, call_construction>::value>>
 		void make_inherit_regs(regs_t& l, int& index, N&& n, F&&) {
 			luaL_Reg reg = usertype_detail::make_reg(std::forward<N>(n), make_func<Idx>());
 			
@@ -264,7 +319,7 @@ namespace sol {
 		usertype_metatable(Args&&... args) : functions(std::forward<Args>(args)...),
 		indexfunc(usertype_detail::indexing_fail<true>), newindexfunc(usertype_detail::indexing_fail<false>),
 		destructfunc(nullptr), callconstructfunc(nullptr), baseclasscheck(nullptr), baseclasscast(nullptr), 
-		mustindex(contains_variable() || contains_index()), secondarymeta(contains_variable()), ref(nullptr) {
+		mustindex(false), secondarymeta(contains_variable()), ref(nullptr) {
 		}
 
 		template <std::size_t I0, std::size_t I1, bool is_index>
@@ -358,6 +413,7 @@ namespace sol {
 
 		virtual void set_reference(reference* r) override {
 			ref = r;
+			mustindex = contains_variable() || contains_index_full();
 		}
 
 		virtual void push_functions(regs_t& l, int& index) override {
