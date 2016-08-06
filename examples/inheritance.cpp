@@ -37,7 +37,7 @@ int main() {
 	lua["print"] = [](const std::string& text) {
 		std::cout << text << std::endl;
 	};
- 
+
 	lua.new_usertype<level00>("level00",
 		"var00", &level00::var00,
 		"var00_prop", sol::property(&level00::GetVar00, &level00::SetVar00),

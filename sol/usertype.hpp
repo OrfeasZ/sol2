@@ -30,8 +30,13 @@
 namespace sol {
 
 	class usertype_base {
-	// TODO: Make this less awkward.
-	public:
+		template <typename T, typename IndexSequence, typename... Tn>
+		friend struct usertype_metatable;
+
+		template <bool top_level, typename base_t>
+		friend class basic_table_core;
+	
+	protected:
 		std::shared_ptr<usertype_detail::registrar> metatableregister;
 	};
 
