@@ -47,6 +47,7 @@ int main() {
 	lua.new_usertype<level01>("level01",
 		//sol::call_constructor, sol::constructors<sol::types<>>(),
 		sol::base_classes, sol::bases<level00>(),
+		"var01", &level01::var01,
 		"GetVar01", &level01::GetVar01,
 		"SetVar01", &level01::SetVar01
 	);
@@ -66,6 +67,7 @@ int main() {
 
 		lua.script("y = level01.new()");
 		lua.script("y:SetVar01(2)");
+		lua.script("print(string.format('%d', y.var01))");
 		lua.script("print(string.format('%d', y:GetVar01()))");
 		lua.script("y:SetVar00(3)");
 		lua.script("print(string.format('%d', y:GetVar00()))");
