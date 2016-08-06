@@ -27,7 +27,6 @@
 #include "function_types.hpp"
 #include "usertype.hpp"
 #include "table_iterator.hpp"
-#include <unordered_map>
 
 namespace sol {
 	namespace detail {
@@ -249,9 +248,9 @@ namespace sol {
 		}
 
 		template<typename Key, typename T>
-        basic_table_core& set_usertype(Key&& key, usertype<T>& user) {
-            user.set_reference(this);
-            (*base_t::get_usertypes())[usertype_traits<T>::name] = user;
+		basic_table_core& set_usertype(Key&& key, usertype<T>& user) {
+			user.set_reference(this);
+			(*base_t::get_usertypes())[usertype_traits<T>::name] = user;
 			return set(std::forward<Key>(key), user);
 		}
 
@@ -270,14 +269,14 @@ namespace sol {
 
 		template<typename Class, typename... CArgs, typename... Args>
 		basic_table_core& new_usertype(const std::string& name, constructors<CArgs...> ctor, Args&&... args) {
-            usertype<Class> utype(ctor, std::forward<Args>(args)...);
+			usertype<Class> utype(ctor, std::forward<Args>(args)...);
 			set_usertype(name, utype);
 			return *this;
 		}
 
 		template<typename Class, typename... Args>
 		basic_table_core& new_simple_usertype(const std::string& name, Args&&... args) {
-            usertype<Class> utype(simple, base_t::lua_state(), std::forward<Args>(args)...);
+			usertype<Class> utype(simple, base_t::lua_state(), std::forward<Args>(args)...);
 			set_usertype(name, utype);
 			return *this;
 		}
@@ -290,7 +289,7 @@ namespace sol {
 
 		template<typename Class, typename... CArgs, typename... Args>
 		basic_table_core& new_simple_usertype(const std::string& name, constructors<CArgs...> ctor, Args&&... args) {
-            usertype<Class> utype(simple, base_t::lua_state(), ctor, std::forward<Args>(args)...);
+			usertype<Class> utype(simple, base_t::lua_state(), ctor, std::forward<Args>(args)...);
 			set_usertype(name, utype);
 			return *this;
 		}

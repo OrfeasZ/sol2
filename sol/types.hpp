@@ -375,15 +375,15 @@ namespace sol {
 		return meta_function_names[static_cast<int>(mf)];
 	}
 
-    inline bool is_meta(const std::string& name) {
-        for (auto meta : meta_function_names) {
-            if (name == meta) {
-                return true;
-            }
-        }
+	inline bool is_meta(const std::string& name) {
+		for (auto meta : meta_function_names) {
+			if (name == meta) {
+				return true;
+			}
+		}
 
-        return false;
-    }
+		return false;
+	}
 
 	inline type type_of(lua_State* L, int index) {
 		return static_cast<type>(lua_type(L, index));

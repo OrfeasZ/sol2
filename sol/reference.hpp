@@ -27,7 +27,7 @@
 #include <unordered_map>
 
 namespace sol {
-    class usertype_base;
+	class usertype_base;
 
 	namespace stack {
 		template <bool top_level>
@@ -70,7 +70,7 @@ namespace sol {
 	private:
 		lua_State* L = nullptr; // non-owning
         int ref = LUA_NOREF;
-        std::unordered_map<std::string, usertype_base>* usertypes = nullptr;
+		std::unordered_map<std::string, usertype_base>* usertypes = nullptr;
 
 		int copy() const noexcept {
 			if (ref == LUA_NOREF)
@@ -83,7 +83,7 @@ namespace sol {
 		reference(lua_State* L, detail::global_tag) noexcept : L(L) {
 			lua_pushglobaltable(L);
 			ref = luaL_ref(L, LUA_REGISTRYINDEX);
-            usertypes = new std::unordered_map<std::string, usertype_base>();
+			usertypes = new std::unordered_map<std::string, usertype_base>();
 		}
 
 		int stack_index() const noexcept {
@@ -98,14 +98,14 @@ namespace sol {
 		reference(lua_State* L, int index = -1) noexcept : L(L) {
 			lua_pushvalue(L, index);
             ref = luaL_ref(L, LUA_REGISTRYINDEX);
-            usertypes = new std::unordered_map<std::string, usertype_base>();
+			usertypes = new std::unordered_map<std::string, usertype_base>();
 		}
 
 		virtual ~reference() noexcept {
 			luaL_unref(L, LUA_REGISTRYINDEX, ref);
-            if (usertypes) {
-                delete usertypes;
-            }
+			if (usertypes) {
+				delete usertypes;
+			}
 		}
 
 		reference(reference&& o) noexcept {
@@ -168,9 +168,9 @@ namespace sol {
 			return L;
 		}
 
-        std::unordered_map<std::string, usertype_base>* get_usertypes() {
-            return usertypes;
-        }
+		std::unordered_map<std::string, usertype_base>* get_usertypes() {
+			return usertypes;
+		}
 	};
 
 	inline bool operator== (const reference& l, const reference& r) {

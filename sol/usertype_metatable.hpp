@@ -77,8 +77,8 @@ namespace sol {
 		struct registrar {
 			virtual int push_um(lua_State* L) = 0;
 			virtual ~registrar() {}
-            virtual void set_reference(reference* r) = 0;
-            virtual void push_functions(std::vector<luaL_Reg>& l, int& index) = 0;
+			virtual void set_reference(reference* r) = 0;
+			virtual void push_functions(std::vector<luaL_Reg>& l, int& index) = 0;
 		};
 
 		template <bool is_index>
@@ -150,7 +150,7 @@ namespace sol {
 		void* baseclasscast;
 		bool mustindex;
 		bool secondarymeta;
-        reference* ref;
+		reference* ref;
 
 		template <std::size_t Idx, meta::enable<std::is_same<lua_CFunction, meta::unqualified_tuple_element<Idx + 1, RawTuple>>> = meta::enabler>
 		inline lua_CFunction make_func() {
@@ -168,6 +168,7 @@ namespace sol {
 		}
 
 		bool contains_index() const {
+			// TODO: Take into account inherited classes.
 			bool idx = false;
 			(void)detail::swallow{ 0, ((idx |= usertype_detail::is_indexer(std::get<I * 2>(functions))), 0) ... };
 			return idx;
@@ -199,34 +200,34 @@ namespace sol {
 			baseclasscheck = (void*)&detail::inheritance<T, Bases...>::type_check;
 			baseclasscast = (void*)&detail::inheritance<T, Bases...>::type_cast;
 
-            if (!ref) {
-                return;
-            }
+			if (!ref) {
+				return;
+			}
 
-            (void)detail::swallow{ 0, 
-                ((make_inheritance<Bases>(l, index)), 0)... 
-            };
+			(void)detail::swallow{ 0, 
+				((make_inheritance<Bases>(l, index)), 0)... 
+			};
 		}
 
-        template <typename BaseClass>
-        void make_inheritance(regs_t& l, int& index) {
-            auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
+		template <typename BaseClass>
+		void make_inheritance(regs_t& l, int& index) {
+			auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
 
-            if (it == ref->get_usertypes()->end()) {
-                return;
-            }
+			if (it == ref->get_usertypes()->end()) {
+				return;
+			}
 
-            it->second.metatableregister->push_functions(l, index);
-        }
+			it->second.metatableregister->push_functions(l, index);
+		}
 
 		template <std::size_t Idx, typename N, typename F>
 		void make_inherit_regs(regs_t& l, int& index, N&& n, F&&) {
 			luaL_Reg reg = usertype_detail::make_reg(std::forward<N>(n), make_func<Idx>());
 			
-            // Ignore any and all meta functions during inheritance registration.
-            if (is_meta(reg.name)) {
-                return;
-            }
+			// Ignore any and all meta functions during inheritance registration.
+			if (is_meta(reg.name)) {
+				return;
+			}
 
 			l.push_back(reg);
 			++index;
@@ -294,6 +295,7 @@ namespace sol {
 				bool found = false;
 				int ret = 0;
 				(void)detail::swallow{ 0, (f.find_call<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor), 0)... };
+				// TODO: Take into account inherited classes.
 				if (found) {
 					return ret;
 				}
@@ -308,6 +310,7 @@ namespace sol {
 				bool found = false;
 				int ret = 0;
 				(void)detail::swallow{ 0, (f.find_call<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor), 0)... };
+				// TODO: Take into account inherited classes.
 				if (found) {
 					return ret;
 				}
@@ -353,13 +356,13 @@ namespace sol {
 
 		}
 
-        virtual void set_reference(reference* r) override {
-            ref = r;
-        }
+		virtual void set_reference(reference* r) override {
+			ref = r;
+		}
 
-        virtual void push_functions(regs_t& l, int& index) override {
-            (void)detail::swallow{ 0, (make_inherit_regs<(I * 2)>(l, index, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
-        }
+		virtual void push_functions(regs_t& l, int& index) override {
+			(void)detail::swallow{ 0, (make_inherit_regs<(I * 2)>(l, index, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
+		}
 	};
 
 	namespace stack {
