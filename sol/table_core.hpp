@@ -249,7 +249,7 @@ namespace sol {
 
 		template<typename Key, typename T>
 		basic_table_core& set_usertype(Key&& key, usertype<T>& user) {
-			user.set_reference(this);
+			user.metatableregister->set_reference(this);
 			(*base_t::get_usertypes())[usertype_traits<T>::name] = user;
 			return set(std::forward<Key>(key), user);
 		}

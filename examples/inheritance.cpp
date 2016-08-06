@@ -10,6 +10,7 @@ public:
 
 	int GetVar00() const { return var00; }
 	void SetVar00(int var) { var00 = var; }
+	virtual int Test() { return 123; }
 };
 
 class level01 : public level00 {
@@ -18,6 +19,7 @@ public:
 
 	int GetVar01() const { return var01; }
 	void SetVar01(int var) { var01 = var; }
+	virtual int Test() override { return 456; }
 };
 
 class level02 : public level01 {
@@ -32,8 +34,7 @@ int main() {
 	sol::state lua;
 	lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::string);
 
-	lua["print"] = [](const std::string& text)
-	{
+	lua["print"] = [](const std::string& text) {
 		std::cout << text << std::endl;
 	};
  
@@ -41,7 +42,8 @@ int main() {
 		"var00", &level00::var00,
 		"var00_prop", sol::property(&level00::GetVar00, &level00::SetVar00),
 		"GetVar00", &level00::GetVar00,
-		"SetVar00", &level00::SetVar00
+		"SetVar00", &level00::SetVar00,
+		"Test", &level00::Test
 	);
 
 	lua.new_usertype<level01>("level01",
@@ -58,15 +60,17 @@ int main() {
 		"SetVar02", &level02::SetVar02
 	);
 
-	try
-	{
+	try {
+		// TODO: Turn these into actual tests and move them out of here.
 		lua.script("x = level00.new()");
+		lua.script("print(string.format('%d - expected 123', x:Test()))");
 		lua.script("x:SetVar00(1)");
 		lua.script("print(string.format('%d - expected 1', x:GetVar00()))");
 		lua.script("x.var00 = 2");
 		lua.script("print(string.format('%d - expected 2', x.var00))");
 
 		lua.script("y = level01.new()");
+		lua.script("print(string.format('%d - expected 456', y:Test()))");
 		lua.script("y:SetVar01(3)");
 		lua.script("print(string.format('%d - expected 3', y.var01))");
 		lua.script("print(string.format('%d - expected 3', y:GetVar01()))");
@@ -100,8 +104,7 @@ int main() {
 		lua.script("print(string.format('%d - expected 10', z:GetVar00()))");
 
 	}
-	catch (std::exception& ex)
-	{
+	catch (std::exception& ex) {
 		std::cout << ex.what() << std::endl;
 	}
 

@@ -78,10 +78,10 @@ namespace sol {
 			virtual int push_um(lua_State* L) = 0;
 			virtual ~registrar() {}
 			virtual void set_reference(reference* r) = 0;
-			virtual void push_functions(std::vector<luaL_Reg>& l, int& index) = 0;
-			virtual bool contains_index() const = 0;
-			virtual void find_call_external(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) = 0;
-			virtual void find_call_external_idx(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) = 0;
+			virtual void register_functions(std::vector<luaL_Reg>& l, int& index) = 0;
+			virtual bool must_index() const = 0;
+			virtual void find_call(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) = 0;
+			virtual void find_call_idx(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) = 0;
 		};
 
 		template <bool is_index>
@@ -171,7 +171,7 @@ namespace sol {
 		}
 
 		template <typename... Bases>
-		void inherited_contain_index(bool& index, base_classes_tag, bases<Bases...>) const {
+		void inherited_contains_index(bool& index, base_classes_tag, bases<Bases...>) const {
 			if (index) {
 				return;
 			}
@@ -187,7 +187,7 @@ namespace sol {
 
 
 		template <typename N, typename F, typename = std::enable_if_t<!meta::any_same<meta::unqualified_t<N>, base_classes_tag>::value>>
-		void inherited_contain_index(bool&, N&&, F&&) const {
+		void inherited_contains_index(bool&, N&&, F&&) const {
 			// Empty logic.
 			// TODO: Optimize this.
 		}
@@ -198,18 +198,22 @@ namespace sol {
 				return;
 			}
 
+			if (!ref) {
+				return;
+			}
+
 			auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
 
 			if (it == ref->get_usertypes()->end()) {
 				return;
 			}
 
-			if (it->second.metatableregister->contains_index()) {
+			if (it->second.metatableregister->must_index()) {
 				index = true;
 			}
 		}
 
-		bool contains_index_full() const {
+		bool contains_index() const {
 			bool idx = false;
 			(void)detail::swallow{ 0, ((idx |= usertype_detail::is_indexer(std::get<I * 2>(functions))), 0) ... };
 
@@ -217,14 +221,10 @@ namespace sol {
 				return idx;
 			}
 
-			// Check inherited classes.
-			(void)detail::swallow{ 0, (inherited_contain_index(idx, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
+			// Check inherited classes for indexing.
+			(void)detail::swallow{ 0, (inherited_contains_index(idx, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
 
 			return idx;
-		}
-
-		virtual bool contains_index() const override {
-			return mustindex;
 		}
 
 		int finish_regs(regs_t& l, int& index) {
@@ -253,24 +253,25 @@ namespace sol {
 			baseclasscheck = (void*)&detail::inheritance<T, Bases...>::type_check;
 			baseclasscast = (void*)&detail::inheritance<T, Bases...>::type_cast;
 
-			if (!ref) {
-				return;
-			}
-
+			// Walk through inherited classes and register their members.
 			(void)detail::swallow{ 0, 
-				((make_inheritance<Bases>(l, index)), 0)... 
+				((register_inheritance<Bases>(l, index)), 0)...
 			};
 		}
 
 		template <typename BaseClass>
-		void make_inheritance(regs_t& l, int& index) {
+		void register_inheritance(regs_t& l, int& index) {
+			if (!ref) {
+				return;
+			}
+
 			auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
 
 			if (it == ref->get_usertypes()->end()) {
 				return;
 			}
 
-			it->second.metatableregister->push_functions(l, index);
+			it->second.metatableregister->register_functions(l, index);
 		}
 
 		template <std::size_t Idx, typename F>
@@ -346,6 +347,10 @@ namespace sol {
 				return;
 			}
 
+			if (!ref) {
+				return;
+			}
+
 			auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
 
 			if (it == ref->get_usertypes()->end()) {
@@ -353,22 +358,22 @@ namespace sol {
 			}
 
 			if (is_index) {
-				it->second.metatableregister->find_call_external(L, found, ret, accessor);
+				it->second.metatableregister->find_call(L, found, ret, accessor);
 			}
 			else {
-				it->second.metatableregister->find_call_external_idx(L, found, ret, accessor);
+				it->second.metatableregister->find_call_idx(L, found, ret, accessor);
 			}
 		}
 
 		template <std::size_t I0, std::size_t I1, bool is_index, typename... Bases>
-		void find_call_full(std::integral_constant<bool, is_index> idx, lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor, base_classes_tag, bases<Bases...>) {
+		void find_call(std::integral_constant<bool, is_index> idx, lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor, base_classes_tag, bases<Bases...>) {
 			(void)detail::swallow{ 0,
 				((find_call_inherited<is_index, Bases>(L, found, ret, accessor)), 0)...
 			};
 		}
 
 		template <std::size_t I0, std::size_t I1, bool is_index, typename N, typename F, typename = std::enable_if_t<!meta::any_same<meta::unqualified_t<N>, base_classes_tag>::value>>
-		void find_call_full(std::integral_constant<bool, is_index> idx, lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor, N&&, F&&) {
+		void find_call(std::integral_constant<bool, is_index> idx, lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor, N&&, F&&) {
 			if (found) {
 				return;
 			}
@@ -401,7 +406,7 @@ namespace sol {
 				string_detail::string_shim accessor = stack::get<string_detail::string_shim>(L, -1);
 				bool found = false;
 				int ret = 0;
-				(void)detail::swallow{ 0, (f.find_call_full<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor, std::get<(I * 2)>(f.functions), std::get<(I * 2 + 1)>(f.functions)), 0)... };
+				(void)detail::swallow{ 0, (f.find_call<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor, std::get<(I * 2)>(f.functions), std::get<(I * 2 + 1)>(f.functions)), 0)... };
 				if (found) {
 					return ret;
 				}
@@ -415,7 +420,7 @@ namespace sol {
 				string_detail::string_shim accessor = stack::get<string_detail::string_shim>(L, -2);
 				bool found = false;
 				int ret = 0;
-				(void)detail::swallow{ 0, (f.find_call_full<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor, std::get<(I * 2)>(f.functions), std::get<(I * 2 + 1)>(f.functions)), 0)... };
+				(void)detail::swallow{ 0, (f.find_call<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor, std::get<(I * 2)>(f.functions), std::get<(I * 2 + 1)>(f.functions)), 0)... };
 				if (found) {
 					return ret;
 				}
@@ -463,18 +468,22 @@ namespace sol {
 
 		virtual void set_reference(reference* r) override {
 			ref = r;
-			mustindex = contains_variable() || contains_index_full();
+			mustindex = contains_variable() || contains_index();
 		}
 
-		virtual void push_functions(regs_t& l, int& index) override {
+		virtual void register_functions(regs_t& l, int& index) override {
 			(void)detail::swallow{ 0, (make_inherit_regs<(I * 2)>(l, index, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
 		}
+
+		virtual bool must_index() const override {
+			return mustindex;
+		}
 		
-		virtual void find_call_external(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) override {
+		virtual void find_call(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) override {
 			(void)detail::swallow{ 0, (find_call<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor), 0)... };
 		}
 
-		virtual void find_call_external_idx(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) override {
+		virtual void find_call_idx(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) override {
 			(void)detail::swallow{ 0, (find_call<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor), 0)... };
 		}
 	};

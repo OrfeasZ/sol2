@@ -33,9 +33,6 @@ namespace sol {
 	// TODO: Make this less awkward.
 	public:
 		std::shared_ptr<usertype_detail::registrar> metatableregister;
-
-	public:
-		virtual void push_functions(std::vector<luaL_Reg>& l, int& index) {}
 	};
 
 	template<typename T>
@@ -65,14 +62,6 @@ namespace sol {
 
 		int push(lua_State* L) {
 			return metatableregister->push_um(L);
-		}
-
-		void set_reference(reference* r) {
-			metatableregister->set_reference(r);
-		}
-
-		virtual void push_functions(std::vector<luaL_Reg>& l, int& index) override {
-			metatableregister->push_functions(l, index);
 		}
 	};
 
