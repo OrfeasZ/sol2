@@ -29,13 +29,20 @@
 
 namespace sol {
 
-	template<typename T>
-	class usertype {
-	private:
-		std::unique_ptr<usertype_detail::registrar, detail::deleter> metatableregister;
+    class usertype_base {
+    // TODO: Make this less awkward.
+    public:
+        std::shared_ptr<usertype_detail::registrar> metatableregister;
 
+    public:
+        virtual void push_functions(std::vector<luaL_Reg>& l, int& index) {}
+    };
+
+	template<typename T>
+	class usertype : public usertype_base {
+	private:
 		template<typename... Args>
-		usertype(usertype_detail::verified_tag, Args&&... args) : metatableregister(detail::make_unique_deleter<usertype_metatable<T, std::make_index_sequence<sizeof...(Args) / 2>, Args...>, detail::deleter>(std::forward<Args>(args)...)) {}
+		usertype(usertype_detail::verified_tag, Args&&... args) { metatableregister = detail::make_shared<usertype_metatable<T, std::make_index_sequence<sizeof...(Args) / 2>, Args...>>(std::forward<Args>(args)...); }
 
 		template<typename... Args>
 		usertype(usertype_detail::add_destructor_tag, Args&&... args) : usertype(usertype_detail::verified, std::forward<Args>(args)..., "__gc", default_destructor) {}
@@ -44,7 +51,6 @@ namespace sol {
 		usertype(usertype_detail::check_destructor_tag, Args&&... args) : usertype(meta::condition<meta::all<std::is_destructible<T>, meta::neg<usertype_detail::has_destructor<Args...>>>, usertype_detail::add_destructor_tag, usertype_detail::verified_tag>(), std::forward<Args>(args)...) {}
 
 	public:
-
 		template<typename... Args>
 		usertype(Args&&... args) : usertype(meta::condition<meta::all<std::is_default_constructible<T>, meta::neg<usertype_detail::has_constructor<Args...>>>, decltype(default_constructor), usertype_detail::check_destructor_tag>(), std::forward<Args>(args)...) {}
 
@@ -55,11 +61,24 @@ namespace sol {
 		usertype(constructor_wrapper<Fxs...> constructorlist, Args&&... args) : usertype(usertype_detail::check_destructor_tag(), std::forward<Args>(args)..., "new", constructorlist) {}
 
 		template<typename... Args>
-		usertype(simple_tag, lua_State* L, Args&&... args) : metatableregister(detail::make_unique_deleter<simple_usertype_metatable<T>, detail::deleter>(L, std::forward<Args>(args)...)) {}
+        usertype(simple_tag, lua_State* L, Args&&... args) { metatableregister = detail::make_shared<simple_usertype_metatable<T>>(L, std::forward<Args>(args)...); }
+
+        ~usertype()
+        {
+            printf("Destroying usertype\n");
+        }
 
 		int push(lua_State* L) {
 			return metatableregister->push_um(L);
 		}
+
+        void set_reference(reference* r) {
+            metatableregister->set_reference(r);
+        }
+
+        virtual void push_functions(std::vector<luaL_Reg>& l, int& index) override {
+            metatableregister->push_functions(l, index);
+        }
 	};
 
 	namespace stack {

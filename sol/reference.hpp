@@ -24,8 +24,11 @@
 
 #include "types.hpp"
 #include "stack_reference.hpp"
+#include <unordered_map>
 
 namespace sol {
+    class usertype_base;
+
 	namespace stack {
 		template <bool top_level>
 		struct push_popper_n {
@@ -66,7 +69,8 @@ namespace sol {
 	class reference {
 	private:
 		lua_State* L = nullptr; // non-owning
-		int ref = LUA_NOREF;
+        int ref = LUA_NOREF;
+        std::unordered_map<std::string, usertype_base>* usertypes = nullptr;
 
 		int copy() const noexcept {
 			if (ref == LUA_NOREF)
@@ -79,6 +83,7 @@ namespace sol {
 		reference(lua_State* L, detail::global_tag) noexcept : L(L) {
 			lua_pushglobaltable(L);
 			ref = luaL_ref(L, LUA_REGISTRYINDEX);
+            usertypes = new std::unordered_map<std::string, usertype_base>();
 		}
 
 		int stack_index() const noexcept {
@@ -92,11 +97,15 @@ namespace sol {
 		reference(stack_reference&& r) noexcept : reference(r.lua_state(), r.stack_index()) {}
 		reference(lua_State* L, int index = -1) noexcept : L(L) {
 			lua_pushvalue(L, index);
-			ref = luaL_ref(L, LUA_REGISTRYINDEX);
+            ref = luaL_ref(L, LUA_REGISTRYINDEX);
+            usertypes = new std::unordered_map<std::string, usertype_base>();
 		}
 
 		virtual ~reference() noexcept {
 			luaL_unref(L, LUA_REGISTRYINDEX, ref);
+            if (usertypes) {
+                delete usertypes;
+            }
 		}
 
 		reference(reference&& o) noexcept {
@@ -158,6 +167,10 @@ namespace sol {
 		lua_State* lua_state() const noexcept {
 			return L;
 		}
+
+        std::unordered_map<std::string, usertype_base>* get_usertypes() {
+            return usertypes;
+        }
 	};
 
 	inline bool operator== (const reference& l, const reference& r) {

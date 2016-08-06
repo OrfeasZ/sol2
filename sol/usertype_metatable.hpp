@@ -31,6 +31,7 @@
 #include "inheritance.hpp"
 #include "raii.hpp"
 #include "deprecate.hpp"
+#include <vector>
 
 namespace sol {
 
@@ -76,6 +77,8 @@ namespace sol {
 		struct registrar {
 			virtual int push_um(lua_State* L) = 0;
 			virtual ~registrar() {}
+            virtual void set_reference(reference* r) = 0;
+            virtual void push_functions(std::vector<luaL_Reg>& l, int& index) = 0;
 		};
 
 		template <bool is_index>
@@ -133,7 +136,7 @@ namespace sol {
 	struct usertype_metatable<T, std::index_sequence<I...>, Tn...> : usertype_detail::registrar {
 		typedef std::make_index_sequence<sizeof...(I) * 2> indices;
 		typedef std::index_sequence<I...> half_indices;
-		typedef std::array<luaL_Reg, sizeof...(Tn) / 2 + 1> regs_t;
+		typedef std::vector<luaL_Reg> regs_t;
 		typedef std::tuple<Tn...> RawTuple;
 		typedef std::tuple<clean_type_t<Tn> ...> Tuple;
 		template <std::size_t Idx>
@@ -147,6 +150,7 @@ namespace sol {
 		void* baseclasscast;
 		bool mustindex;
 		bool secondarymeta;
+        reference* ref;
 
 		template <std::size_t Idx, meta::enable<std::is_same<lua_CFunction, meta::unqualified_tuple_element<Idx + 1, RawTuple>>> = meta::enabler>
 		inline lua_CFunction make_func() {
@@ -171,7 +175,7 @@ namespace sol {
 
 		int finish_regs(regs_t& l, int& index) {
 			if (destructfunc != nullptr) {
-				l[index] = { name_of(meta_function::garbage_collect).c_str(), destructfunc };
+				l.push_back({ name_of(meta_function::garbage_collect).c_str(), destructfunc });
 				++index;
 			}
 			return index;
@@ -184,7 +188,7 @@ namespace sol {
 		}
 
 		template <std::size_t, typename... Bases>
-		void make_regs(regs_t&, int&, base_classes_tag, bases<Bases...>) {
+		void make_regs(regs_t& l, int& index, base_classes_tag, bases<Bases...>) {
 			if (sizeof...(Bases) < 1) {
 				return;
 			}
@@ -194,6 +198,38 @@ namespace sol {
 			static_assert(sizeof(void*) <= sizeof(detail::inheritance_cast_function), "The size of this data pointer is too small to fit the inheritance checking function: file a bug report.");
 			baseclasscheck = (void*)&detail::inheritance<T, Bases...>::type_check;
 			baseclasscast = (void*)&detail::inheritance<T, Bases...>::type_cast;
+
+            if (!ref) {
+                return;
+            }
+
+            (void)detail::swallow{ 0, 
+                ((make_inheritance<Bases>(l, index)), 0)... 
+            };
+		}
+
+        template <typename BaseClass>
+        void make_inheritance(regs_t& l, int& index) {
+            auto it = ref->get_usertypes()->find(usertype_traits<BaseClass>::qualified_name);
+
+            if (it == ref->get_usertypes()->end()) {
+                return;
+            }
+
+            it->second.metatableregister->push_functions(l, index);
+        }
+
+		template <std::size_t Idx, typename N, typename F>
+		void make_inherit_regs(regs_t& l, int& index, N&& n, F&&) {
+			luaL_Reg reg = usertype_detail::make_reg(std::forward<N>(n), make_func<Idx>());
+			
+            // Ignore any and all meta functions during inheritance registration.
+            if (is_meta(reg.name)) {
+                return;
+            }
+
+			l.push_back(reg);
+			++index;
 		}
 
 		template <std::size_t Idx, typename N, typename F, typename = std::enable_if_t<!meta::any_same<meta::unqualified_t<N>, base_classes_tag, call_construction>::value>>
@@ -219,7 +255,7 @@ namespace sol {
 				mustindex = true;
 				return;
 			}
-			l[index] = reg;
+			l.push_back(reg);
 			++index;
 		}
 
@@ -227,7 +263,7 @@ namespace sol {
 		usertype_metatable(Args&&... args) : functions(std::forward<Args>(args)...),
 		indexfunc(usertype_detail::indexing_fail<true>), newindexfunc(usertype_detail::indexing_fail<false>),
 		destructfunc(nullptr), callconstructfunc(nullptr), baseclasscheck(nullptr), baseclasscast(nullptr), 
-		mustindex(contains_variable() || contains_index()), secondarymeta(contains_variable()) {
+		mustindex(contains_variable() || contains_index()), secondarymeta(contains_variable()), ref(nullptr) {
 		}
 
 		template <std::size_t I0, std::size_t I1, bool is_index>
@@ -316,6 +352,14 @@ namespace sol {
 		~usertype_metatable() override {
 
 		}
+
+        virtual void set_reference(reference* r) override {
+            ref = r;
+        }
+
+        virtual void push_functions(regs_t& l, int& index) override {
+            (void)detail::swallow{ 0, (make_inherit_regs<(I * 2)>(l, index, std::get<(I * 2)>(functions), std::get<(I * 2 + 1)>(functions)), 0)... };
+        }
 	};
 
 	namespace stack {
@@ -343,11 +387,11 @@ namespace sol {
 			static int push(lua_State* L, umt_t&& umx) {
 				
 				umt_t& um = make_cleanup(L, std::move(umx));
-				regs_t value_table{ {} };
+				regs_t value_table;
 				int lastreg = 0;
 				(void)detail::swallow{ 0, (um.template make_regs<(I * 2)>(value_table, lastreg, std::get<(I * 2)>(um.functions), std::get<(I * 2 + 1)>(um.functions)), 0)... };
 				um.finish_regs(value_table, lastreg);
-				value_table[lastreg] = { nullptr, nullptr };
+				value_table.push_back({ nullptr, nullptr });
 				bool hasdestructor = !value_table.empty() && name_of(meta_function::garbage_collect) == value_table[lastreg - 1].name;
 				regs_t ref_table = value_table;
 				regs_t unique_table = value_table;

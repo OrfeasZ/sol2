@@ -65,6 +65,11 @@ namespace sol {
 			return std::unique_ptr<T, Dx>(new T(std::forward<Args>(args)...));
 		}
 
+		template <typename T, typename... Args>
+		inline std::shared_ptr<T> make_shared(Args&&... args) {
+			return std::shared_ptr<T>(new T(std::forward<Args>(args)...));
+		}
+
 		template <typename T, typename List>
 		struct tagged {
 			List l;
