@@ -54,6 +54,7 @@ int main() {
 
 	lua.new_usertype<level02>("level02",
 		sol::base_classes, sol::bases<level00, level01>(),
+		"var02", &level02::var02,
 		"GetVar02", &level02::GetVar02,
 		"SetVar02", &level02::SetVar02
 	);
@@ -62,26 +63,40 @@ int main() {
 	{
 		lua.script("x = level00.new()");
 		lua.script("x:SetVar00(1)");
-		lua.script("print(string.format('%d', x:GetVar00()))");
-		lua.script("print(string.format('%d', x.var00))");
+		lua.script("print(string.format('%d - expected 1', x:GetVar00()))");
+		lua.script("x.var00 = 2");
+		lua.script("print(string.format('%d - expected 2', x.var00))");
 
 		lua.script("y = level01.new()");
-		lua.script("y:SetVar01(2)");
-		lua.script("print(string.format('%d', y.var01))");
-		lua.script("print(string.format('%d', y:GetVar01()))");
-		lua.script("y:SetVar00(3)");
-		lua.script("print(string.format('%d', y:GetVar00()))");
-		lua.script("print(string.format('%d', y.var00))");
+		lua.script("y:SetVar01(3)");
+		lua.script("print(string.format('%d - expected 3', y.var01))");
+		lua.script("print(string.format('%d - expected 3', y:GetVar01()))");
+		lua.script("y:SetVar00(4)");
+		lua.script("print(string.format('%d - expected 4', y:GetVar00()))");
+		lua.script("print(string.format('%d - expected 3', y:GetVar01()))");
+		lua.script("print(string.format('%d - expected 4', y.var00))");
+		lua.script("y.var01 = 5");
+		lua.script("print(string.format('%d - expected 5', y.var01))");
 
 		lua.script("z = level02.new()");
-		lua.script("z:SetVar02(4)");
-		lua.script("print(string.format('%d', z:GetVar02()))");
-		lua.script("z:SetVar00(5)");
-		lua.script("print(string.format('%d', z:GetVar00()))");
-		lua.script("print(string.format('%d', z.var00))");
-		lua.script("z:SetVar01(6)");
-		lua.script("print(string.format('%d', z:GetVar01()))");
-		lua.script("print(string.format('%d', z.var01))");
+		lua.script("z:SetVar02(6)");
+		lua.script("print(string.format('%d - expected 6', z.var02))");
+		lua.script("print(string.format('%d - expected 6', z:GetVar02()))");
+		lua.script("z:SetVar00(7)");
+		lua.script("print(string.format('%d - expected 7', z:GetVar00()))");
+		lua.script("print(string.format('%d - expected 0', z:GetVar01()))");
+		lua.script("print(string.format('%d - expected 6', z:GetVar02()))");
+		lua.script("print(string.format('%d - expected 7', z.var00))");
+		lua.script("print(string.format('%d - expected 0', z.var01))");
+		lua.script("z:SetVar01(8)");
+		lua.script("print(string.format('%d - expected 7', z:GetVar00()))");
+		lua.script("print(string.format('%d - expected 8', z:GetVar01()))");
+		lua.script("print(string.format('%d - expected 6', z:GetVar02()))");
+		lua.script("print(string.format('%d - expected 7', z.var00))");
+		lua.script("print(string.format('%d - expected 8', z.var01))");
+		lua.script("z.var02 = 9");
+		lua.script("print(string.format('%d - expected 9', z.var02))");
+
 	}
 	catch (std::exception& ex)
 	{

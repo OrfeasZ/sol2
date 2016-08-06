@@ -353,10 +353,10 @@ namespace sol {
 			}
 
 			if (is_index) {
-				it->second.metatableregister->find_call_external_idx(L, found, ret, accessor);
+				it->second.metatableregister->find_call_external(L, found, ret, accessor);
 			}
 			else {
-				it->second.metatableregister->find_call_external(L, found, ret, accessor);
+				it->second.metatableregister->find_call_external_idx(L, found, ret, accessor);
 			}
 		}
 
@@ -403,7 +403,6 @@ namespace sol {
 				int ret = 0;
 				(void)detail::swallow{ 0, (f.find_call_full<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor, std::get<(I * 2)>(f.functions), std::get<(I * 2 + 1)>(f.functions)), 0)... };
 				if (found) {
-					printf("Found '%s' at %d.\n", accessor.c_str(), ret);
 					return ret;
 				}
 			}
@@ -418,7 +417,6 @@ namespace sol {
 				int ret = 0;
 				(void)detail::swallow{ 0, (f.find_call_full<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor, std::get<(I * 2)>(f.functions), std::get<(I * 2 + 1)>(f.functions)), 0)... };
 				if (found) {
-					printf("Found new '%s' at %d.\n", accessor.c_str(), ret);
 					return ret;
 				}
 			}
