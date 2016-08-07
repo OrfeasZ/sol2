@@ -387,7 +387,7 @@ namespace sol {
 		}
 
 		template <std::size_t I0, std::size_t I1, bool is_index>
-		void find_call(std::integral_constant<bool, is_index> idx, lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) {
+		void find_call_self(std::integral_constant<bool, is_index> idx, lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) {
 			if (found) {
 				return;
 			}
@@ -480,11 +480,11 @@ namespace sol {
 		}
 		
 		virtual void find_call(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) override {
-			(void)detail::swallow{ 0, (find_call<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor), 0)... };
+			(void)detail::swallow{ 0, (find_call_self<I * 2, I * 2 + 1>(std::true_type(), L, found, ret, accessor), 0)... };
 		}
 
 		virtual void find_call_idx(lua_State* L, bool& found, int& ret, const sol::string_detail::string_shim& accessor) override {
-			(void)detail::swallow{ 0, (find_call<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor), 0)... };
+			(void)detail::swallow{ 0, (find_call_self<I * 2, I * 2 + 1>(std::false_type(), L, found, ret, accessor), 0)... };
 		}
 	};
 
