@@ -70,7 +70,7 @@ namespace sol {
 
 	public:
 		template<typename... Args>
-		simple_usertype(lua_State* L, Args&&... args) : state(L), usertype(simple, L, std::forward<Args>(args)...) {}
+		simple_usertype(lua_State* L, Args&&... args) : state(L), usertype<T>(simple, L, std::forward<Args>(args)...) {}
 		
 		template <typename N, typename F>
 		void add(N&& n, F&& f) {
